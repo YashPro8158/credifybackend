@@ -74,7 +74,7 @@ app.post(
 
     // Background email
     try {
-      await transporter.sendMail({
+      await sendEmail({
         from: `"Credify Contact" <${process.env.EMAIL_USER}>`,
         to: process.env.EMAIL_TO || process.env.EMAIL_USER,
         subject: "New Contact Form Submission [Credify]",
@@ -113,7 +113,7 @@ app.post(
 
     // Background email
     try {
-      await transporter.sendMail({
+      await sendEmail({
         from: `"Credify Careers" <${process.env.EMAIL_USER}>`,
         to: process.env.EMAIL_TO || process.env.EMAIL_USER,
         subject: `New Career Application [${req.body.role}]`,
@@ -147,7 +147,7 @@ app.post("/api/apply", async (req, res) => {
 
   // Background email
   try {
-    await transporter.sendMail({
+    await sendEmail({
       from: `"${req.body.fullName} via Credify" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_TO || process.env.EMAIL_USER,
       subject: `New Loan Application - ${referenceId}`,
