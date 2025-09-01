@@ -26,23 +26,34 @@ app.use(
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(bodyParser.json());
-
+app.set("trust proxy", 1);
 // ---- Rate Limit ----
 const limiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 30 });
 app.use("/api/", limiter);
 
 // ---- Nodemailer Transport ----
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465,
-  secure: true,
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-});
+// ✅ Brevo setup
+const SibApiV3Sdk = require('@getbrevo/brevo');
 
-transporter
-  .verify()
-  .then(() => console.log("✅ SMTP ready"))
-  .catch((e) => console.error("❌ SMTP error:", e.message));
+const brevoClient = new SibApiV3Sdk.TransactionalEmailsApi();
+brevoClient.setApiKey(
+  SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+);
+
+async function sendEmail({ subject, html }) {
+  try {
+    await brevoClient.sendTransacEmail({
+      sender: { email: process.env.EMAIL_USER, name: "Credify" },
+      to: [{ email: process.env.EMAIL_TO }],
+      subject,
+      htmlContent: html,
+    });
+    console.log("✅ Brevo email sent");
+  } catch (e) {
+    console.error("❌ Brevo email error:", e.message);
+  }
+}
 
 // ---- Contact API ----
 app.post(
