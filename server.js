@@ -9,7 +9,6 @@ const dotenv = require("dotenv");
 const { body, validationResult } = require("express-validator");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
-const multer = require("multer");  // 🔥 multer import
 
 
 dotenv.config();
@@ -80,20 +79,6 @@ app.post(
     }
   }
 );
-// ---- File upload (resume)
-const upload = multer({
-  storage: multer.memoryStorage(), // file memory me store hogi
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-  fileFilter: (req, file, cb) => {
-    const allowed = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("Only PDF/DOC/DOCX allowed"));
-  },
-});
 
 // Career form
 app.post(
@@ -114,11 +99,7 @@ app.post(
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: "Resume required" });
-    }
-
-    const { fullName, email, phone, role, experience, message } = req.body;
+  const { fullName, email, phone, role, experience, message } = req.body;
 
     try {
       const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
