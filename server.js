@@ -36,17 +36,14 @@ app.use("/api/", limiter);
 
 // ---- Nodemailer Transport ----
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465,
-  secure: true,
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT, 10) || 587,
+  secure: process.env.SMTP_SECURE === "false",  // false when we use brevo api 587 use karo
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
 });
-
-transporter
-  .verify()
-  .then(() => console.log("✅ SMTP ready"))
-  .catch((e) => console.error("❌ SMTP error:", e.message));
-
 // ---- Contact API ----
 app.post(
   "/api/contact",
@@ -58,13 +55,10 @@ app.post(
   ],
   async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty())
+    if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
+    }
 
-    // Turant response
-    res.json({ success: true, msg: "Contact form received ✅" });
-
-    // Background email
     try {
       await transporter.sendMail({
         from: `"Credify Contact" <${process.env.EMAIL_USER}>`,
@@ -78,13 +72,14 @@ app.post(
           <p><b>Message:</b> ${escapeHtml(req.body.message)}</p>
         `,
       });
-      console.log("📩 Contact mail sent");
+
+      res.json({ success: true, msg: "Contact form submitted ✅" });
     } catch (err) {
       console.error("❌ Contact mail error:", err.message);
+      res.status(500).json({ success: false, error: "Email failed" });
     }
   }
 );
-
 // ---- File upload (resume)
 const upload = multer({
   storage: multer.memoryStorage(), // file memory me store hogi
@@ -144,16 +139,17 @@ app.post(
         `,
         attachments: [
           {
-            filename: req.file.originalname,  // 🔥 original filename
-            content: req.file.buffer,        // 🔥 file ka content
-            contentType: req.file.mimetype,  // 🔥 file ka type (pdf/doc)
+            filename: req.file.originalname,
+            content: req.file.buffer,
+            contentType: req.file.mimetype,
           },
         ],
       });
 
+      // ✅ Success response after mail is sent
       res.json({ success: true, msg: "Career form submitted with resume ✅" });
     } catch (err) {
-      console.error(err);
+      console.error("❌ Career mail error:", err.message);
       res.status(500).json({ success: false, error: "Email failed" });
     }
   }
@@ -162,19 +158,26 @@ app.post(
 
 // ---- Loan Application API ----
 app.post("/api/apply", async (req, res) => {
-  const { referenceId, loanType, fullName, mobile, email,dob,income,employment,loanAmount,city } = req.body;
+  const {
+    referenceId,
+    loanType,
+    fullName,
+    mobile,
+    email,
+    dob,
+    income,
+    employment,
+    loanAmount,
+    city,
+  } = req.body;
 
   if (!fullName || !mobile || !email || !loanType) {
     return res.status(400).json({ success: false, error: "Missing fields" });
   }
 
-  // Turant response
-  res.json({ success: true, msg: "Loan application received ✅" });
-
-  // Background email
   try {
     await transporter.sendMail({
-      from: `"${req.body.fullName} via Credify" <${process.env.EMAIL_USER}>`,
+      from: `"${fullName} via Credify" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_TO || process.env.EMAIL_USER,
       subject: `New Loan Application - ${referenceId}`,
       html: `
@@ -192,11 +195,15 @@ app.post("/api/apply", async (req, res) => {
         <p><b>City:</b> ${city}</p>
       `,
     });
-    console.log("📩 Loan mail sent");
+
+    // ✅ Success response after mail is sent
+    res.json({ success: true, msg: "Loan application submitted ✅" });
   } catch (err) {
     console.error("❌ Loan mail error:", err.message);
+    res.status(500).json({ success: false, error: "Email failed" });
   }
 });
+
 
 // ---- Default route ----
 app.get("/", (_, res) => res.send("Credify backend is live ✅"));
