@@ -105,6 +105,7 @@ app.post(
     body("phone").trim().isLength({ min: 7 }).withMessage("Phone required"),
     body("role").trim().notEmpty().withMessage("Role required"),
     body("experience").trim().notEmpty().withMessage("Experience required"),
+    body("resumeLink").isURL().withMessage("Valid Google Drive link required"),
     body("message").optional().trim(),
   ],
   async (req, res) => {
@@ -138,14 +139,10 @@ app.post(
             <p><b>Phone:</b> ${escapeHtml(phone)}</p>
             <p><b>Role:</b> ${escapeHtml(role)}</p>
             <p><b>Experience:</b> ${escapeHtml(experience)}</p>
+            <p><b>Resume Link:</b> <a href="${resumeLink}" target="_blank">${resumeLink}</a></p>
             ${message ? `<p><b>Message:</b><br>${escapeHtml(message).replace(/\n/g, "<br>")}</p>` : ""}
           `,
-          attachments: [
-            {
-              name: req.file.originalname,
-              content: req.file.buffer.toString("base64"), // ✅ base64 only
-            },
-          ],
+          
         }),
       });
 
