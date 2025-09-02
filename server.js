@@ -146,9 +146,8 @@ app.post(
     `,
     attachments: [
       {
-        name: req.file.originalname,              // original resume filename
-        contentType: req.file.mimetype,
-        content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ cleanup
+     content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
+     name: req.file.originalname, // ✅ filename
       },
     ],
   }),
@@ -165,7 +164,7 @@ app.post(
 
 
 // ---- Loan Application API ----
-app.post("/api/apply",upload.single("resume"), async (req, res) => {
+app.post("/api/apply", async (req, res) => {
   const {
     referenceId,
     loanType,
