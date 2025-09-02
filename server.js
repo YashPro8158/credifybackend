@@ -146,8 +146,8 @@ app.post(
     `,
     attachments: [
       {
-        name: req.file.originalname,              // original resume filename
         content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ cleanup
+        name: req.file.originalname,              // original resume filename
         type: req.file.mimetype,// file type
       },
     ],
