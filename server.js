@@ -1,4 +1,5 @@
 // server.js
+const fetch = require("node-fetch");
 const express = require("express");
 const path = require("path");
 const nodemailer = require("nodemailer");
@@ -34,16 +35,7 @@ app.use(bodyParser.json());
 const limiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 30 });
 app.use("/api/", limiter);
 
-// ---- Nodemailer Transport ----
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT, 10) || 587,
-  secure: process.env.SMTP_SECURE === "false",  // false when we use brevo api 587 use karo
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+
 // ---- Contact API ----
 app.post(
   "/api/contact",
@@ -60,18 +52,26 @@ app.post(
     }
 
     try {
-      await transporter.sendMail({
-        from: `"Credify Contact" <${process.env.EMAIL_USER}>`,
-        to: process.env.EMAIL_TO || process.env.EMAIL_USER,
-        subject: "New Contact Form Submission [Credify]",
-        html: `
-          <h2>Contact Form Submission</h2>
-          <p><b>Name:</b> ${escapeHtml(req.body.name)}</p>
-          <p><b>Email:</b> ${escapeHtml(req.body.email)}</p>
-          <p><b>Loan Type:</b> ${escapeHtml(req.body.loanType)}</p>
-          <p><b>Message:</b> ${escapeHtml(req.body.message)}</p>
-        `,
-      });
+  await fetch("https://api.brevo.com/v3/smtp/email", {
+  method: "POST",
+  headers: {
+    "accept": "application/json",
+    "api-key": process.env.BREVO_API_KEY,   // Railway pe set karo
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    sender: { name: "Credify Contact", email: process.env.EMAIL_USER },
+    to: [{ email: process.env.EMAIL_TO || process.env.EMAIL_USER }],
+    subject: "New Contact Form Submission [Credify]",
+    htmlContent: `
+      <h2>Contact Form Submission</h2>
+      <p><b>Name:</b> ${escapeHtml(req.body.name)}</p>
+      <p><b>Email:</b> ${escapeHtml(req.body.email)}</p>
+      <p><b>Loan Type:</b> ${escapeHtml(req.body.loanType)}</p>
+      <p><b>Message:</b> ${escapeHtml(req.body.message)}</p>
+    `,
+  }),
+});
 
       res.json({ success: true, msg: "Contact form submitted ✅" });
     } catch (err) {
@@ -120,31 +120,38 @@ app.post(
     const { fullName, email, phone, role, experience, message } = req.body;
 
     try {
-      await transporter.sendMail({
-        from: `"Credify Careers" <${process.env.EMAIL_USER}>`,
-        to: process.env.EMAIL_TO || process.env.EMAIL_USER,
-        subject: `New Career Application [${role}] - ${fullName}`,
-        html: `
-          <h2>Career Application</h2>
-          <p><b>Name:</b> ${escapeHtml(fullName)}</p>
-          <p><b>Email:</b> ${escapeHtml(email)}</p>
-          <p><b>Phone:</b> ${escapeHtml(phone)}</p>
-          <p><b>Role:</b> ${escapeHtml(role)}</p>
-          <p><b>Experience:</b> ${escapeHtml(experience)}</p>
-          ${
-            message
-              ? `<p><b>Message:</b><br>${escapeHtml(message).replace(/\n/g, "<br>")}</p>`
-              : ""
-          }
-        `,
-        attachments: [
-          {
-            filename: req.file.originalname,
-            content: req.file.buffer,
-            contentType: req.file.mimetype,
-          },
-        ],
-      });
+     await fetch("https://api.brevo.com/v3/smtp/email", {
+  method: "POST",
+  headers: {
+    "accept": "application/json",
+    "api-key": process.env.BREVO_API_KEY,
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    sender: { name: "Credify Careers", email: process.env.EMAIL_USER },
+    to: [{ email: process.env.EMAIL_TO || process.env.EMAIL_USER }],
+    subject: `New Career Application [${role}] - ${fullName}`,
+    htmlContent: `
+      <h2>Career Application</h2>
+      <p><b>Name:</b> ${escapeHtml(fullName)}</p>
+      <p><b>Email:</b> ${escapeHtml(email)}</p>
+      <p><b>Phone:</b> ${escapeHtml(phone)}</p>
+      <p><b>Role:</b> ${escapeHtml(role)}</p>
+      <p><b>Experience:</b> ${escapeHtml(experience)}</p>
+      ${
+        message
+          ? `<p><b>Message:</b><br>${escapeHtml(message).replace(/\n/g, "<br>")}</p>`
+          : ""
+      }
+    `,
+    attachments: [
+      {
+        name: req.file.originalname,              // original resume filename
+        content: req.file.buffer.toString("base64"), // buffer ko base64 me convert karna padta hai
+      },
+    ],
+  }),
+});
 
       // ✅ Success response after mail is sent
       res.json({ success: true, msg: "Career form submitted with resume ✅" });
@@ -176,25 +183,32 @@ app.post("/api/apply", async (req, res) => {
   }
 
   try {
-    await transporter.sendMail({
-      from: `"${fullName} via Credify" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_TO || process.env.EMAIL_USER,
-      subject: `New Loan Application - ${referenceId}`,
-      html: `
-        <h2>Loan Application</h2>
-        <p><b>Name:</b> ${escapeHtml(fullName)}</p>
-        <p><b>Email:</b> ${escapeHtml(email)}</p>
-        <p><b>Loan Type:</b> ${escapeHtml(loanType)}</p>
-        <p><b>Full Name:</b> ${fullName}</p>
-        <p><b>Mobile:</b> ${mobile}</p>
-        <p><b>Email:</b> ${email}</p>
-        <p><b>Date of Birth:</b> ${dob}</p>
-        <p><b>Monthly Income:</b> ${income}</p>
-        <p><b>Employment:</b> ${employment}</p>
-        <p><b>Loan Amount:</b> ₹${loanAmount}</p>
-        <p><b>City:</b> ${city}</p>
-      `,
-    });
+   await fetch("https://api.brevo.com/v3/smtp/email", {
+  method: "POST",
+  headers: {
+    "accept": "application/json",
+    "api-key": process.env.BREVO_API_KEY,
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    sender: { name: `${fullName} via Credify`, email: process.env.EMAIL_USER },
+    to: [{ email: process.env.EMAIL_TO || process.env.EMAIL_USER }],
+    subject: `New Loan Application - ${referenceId}`,
+    htmlContent: `
+      <h2>Loan Application</h2>
+      <p><b>Name:</b> ${escapeHtml(fullName)}</p>
+      <p><b>Email:</b> ${escapeHtml(email)}</p>
+      <p><b>Loan Type:</b> ${escapeHtml(loanType)}</p>
+      <p><b>Full Name:</b> ${fullName}</p>
+      <p><b>Mobile:</b> ${mobile}</p>
+      <p><b>Date of Birth:</b> ${dob}</p>
+      <p><b>Monthly Income:</b> ${income}</p>
+      <p><b>Employment:</b> ${employment}</p>
+      <p><b>Loan Amount:</b> ₹${loanAmount}</p>
+      <p><b>City:</b> ${city}</p>
+    `,
+  }),
+});
 
     // ✅ Success response after mail is sent
     res.json({ success: true, msg: "Loan application submitted ✅" });
