@@ -98,7 +98,7 @@ const upload = multer({
 // Career form
 app.post(
   "/api/career",
-  upload.single("resume"),   // 🔥 yaha file upload enable hai
+  upload.single("resume"),
   [
     body("fullName").trim().isLength({ min: 2 }).withMessage("Full name required"),
     body("email").isEmail().withMessage("Valid email required"),
@@ -120,47 +120,50 @@ app.post(
     const { fullName, email, phone, role, experience, message } = req.body;
 
     try {
-     await fetch("https://api.brevo.com/v3/smtp/email", {
-  method: "POST",
-  headers: {
-    "accept": "application/json",
-    "api-key": process.env.BREVO_API_KEY,
-    "content-type": "application/json",
-  },
-  body: JSON.stringify({
-    sender: { name: "Credify Careers", email: process.env.EMAIL_USER },
-    to: [{ email: process.env.EMAIL_TO || process.env.EMAIL_USER }],
-    subject: `New Career Application [${role}] - ${fullName}`,
-    htmlContent: `
-      <h2>Career Application</h2>
-      <p><b>Name:</b> ${escapeHtml(fullName)}</p>
-      <p><b>Email:</b> ${escapeHtml(email)}</p>
-      <p><b>Phone:</b> ${escapeHtml(phone)}</p>
-      <p><b>Role:</b> ${escapeHtml(role)}</p>
-      <p><b>Experience:</b> ${escapeHtml(experience)}</p>
-      ${
-        message
-          ? `<p><b>Message:</b><br>${escapeHtml(message).replace(/\n/g, "<br>")}</p>`
-          : ""
-      }
-    `,
-    attachments: [
-      {
-     content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
-     name: req.file.originalname, // ✅ filename
-      },
-    ],
-  }),
-});
+      const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: "Credify Careers", email: process.env.EMAIL_USER },
+          to: [{ email: process.env.EMAIL_TO || process.env.EMAIL_USER }],
+          subject: `New Career Application [${role}] - ${fullName}`,
+          htmlContent: `
+            <h2>Career Application</h2>
+            <p><b>Name:</b> ${escapeHtml(fullName)}</p>
+            <p><b>Email:</b> ${escapeHtml(email)}</p>
+            <p><b>Phone:</b> ${escapeHtml(phone)}</p>
+            <p><b>Role:</b> ${escapeHtml(role)}</p>
+            <p><b>Experience:</b> ${escapeHtml(experience)}</p>
+            ${message ? `<p><b>Message:</b><br>${escapeHtml(message).replace(/\n/g, "<br>")}</p>` : ""}
+          `,
+          attachments: [
+            {
+              name: req.file.originalname,
+              content: Buffer.from(req.file.buffer).toString("base64"), // ✅ base64 only
+            },
+          ],
+        }),
+      });
 
-      // ✅ Success response after mail is sent
-      res.json({ success: true, msg: "Career form submitted with resume ✅" });
+      const out = await brevoRes.json();
+      console.log("📩 Brevo Response:", out);
+
+      if (out.messageId || out.messageIds) {
+        res.json({ success: true, msg: "Career form submitted with resume ✅" });
+      } else {
+        res.status(500).json({ success: false, error: "Brevo failed", out });
+      }
     } catch (err) {
       console.error("❌ Career mail error:", err.message);
       res.status(500).json({ success: false, error: "Email failed" });
     }
   }
 );
+
 
 
 // ---- Loan Application API ----
