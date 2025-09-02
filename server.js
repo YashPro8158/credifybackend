@@ -1,4 +1,5 @@
 // server.js
+const multer = require("multer");  // 🔥 multer import
 const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const express = require("express");
 const path = require("path");
@@ -79,17 +80,30 @@ app.post(
     }
   }
 );
-
+// ---- File upload (resume)
+const upload = multer({
+  storage: multer.memoryStorage(), // file memory me store hogi
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF/DOC/DOCX allowed"));
+  },
+});
 // Career form
 app.post(
   "/api/career",
+  upload.single("resume"),   // 🔥 yaha file upload enable hai
   [
     body("fullName").trim().isLength({ min: 2 }).withMessage("Full name required"),
     body("email").isEmail().withMessage("Valid email required"),
     body("phone").trim().isLength({ min: 7 }).withMessage("Phone required"),
     body("role").trim().notEmpty().withMessage("Role required"),
     body("experience").trim().notEmpty().withMessage("Experience required"),
-    body("resumeLink").isURL().withMessage("Valid Google Drive link required"),
     body("message").optional().trim(),
   ],
   async (req, res) => {
@@ -98,48 +112,55 @@ app.post(
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-  const { fullName, email, phone, role, experience, message } = req.body;
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "Resume required" });
+    }
+
+    const { fullName, email, phone, role, experience, message } = req.body;
 
     try {
-      const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-          "accept": "application/json",
-          "api-key": process.env.BREVO_API_KEY,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          sender: { name: "Credify Careers", email: process.env.EMAIL_USER },
-          to: [{ email: process.env.EMAIL_TO || process.env.EMAIL_USER }],
-          subject: `New Career Application [${role}] - ${fullName}`,
-          htmlContent: `
-            <h2>Career Application</h2>
-            <p><b>Name:</b> ${escapeHtml(fullName)}</p>
-            <p><b>Email:</b> ${escapeHtml(email)}</p>
-            <p><b>Phone:</b> ${escapeHtml(phone)}</p>
-            <p><b>Role:</b> ${escapeHtml(role)}</p>
-            <p><b>Experience:</b> ${escapeHtml(experience)}</p>
-            <p><b>Resume Link:</b> <a href="${resumeLink}" target="_blank">${resumeLink}</a></p>
-            ${message ? `<p><b>Message:</b><br>${escapeHtml(message).replace(/\n/g, "<br>")}</p>` : ""}
-          `,
-          
-        }),
-      });
-
-      const out = await brevoRes.json();
-      console.log("📩 Brevo Response:", out);
-
-      if (out.messageId || out.messageIds) {
-        res.json({ success: true, msg: "Career form submitted with resume ✅" });
-      } else {
-        res.status(500).json({ success: false, error: "Brevo failed", out });
+     await fetch("https://api.brevo.com/v3/smtp/email", {
+  method: "POST",
+  headers: {
+    "accept": "application/json",
+    "api-key": process.env.BREVO_API_KEY,
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    sender: { name: "Credify Careers", email: process.env.EMAIL_USER },
+    to: [{ email: process.env.EMAIL_TO || process.env.EMAIL_USER }],
+    subject: `New Career Application [${role}] - ${fullName}`,
+    htmlContent: `
+      <h2>Career Application</h2>
+      <p><b>Name:</b> ${escapeHtml(fullName)}</p>
+      <p><b>Email:</b> ${escapeHtml(email)}</p>
+      <p><b>Phone:</b> ${escapeHtml(phone)}</p>
+      <p><b>Role:</b> ${escapeHtml(role)}</p>
+      <p><b>Experience:</b> ${escapeHtml(experience)}</p>
+      ${
+        message
+          ? `<p><b>Message:</b><br>${escapeHtml(message).replace(/\n/g, "<br>")}</p>`
+          : ""
       }
+    `,
+    attachments: [
+      {
+     content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
+     name: req.file.originalname, // ✅ filename
+      },
+    ],
+  }),
+});
+
+      // ✅ Success response after mail is sent
+      res.json({ success: true, msg: "Career form submitted with resume ✅" });
     } catch (err) {
       console.error("❌ Career mail error:", err.message);
       res.status(500).json({ success: false, error: "Email failed" });
     }
   }
 );
+
 
 
 
