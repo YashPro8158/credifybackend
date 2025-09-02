@@ -143,7 +143,7 @@ app.post(
           attachments: [
             {
               name: req.file.originalname,
-              content: Buffer.from(req.file.buffer).toString("base64"), // ✅ base64 only
+              content: req.file.buffer.toString("base64"), // ✅ base64 only
             },
           ],
         }),
@@ -154,8 +154,10 @@ app.post(
 
       if (out.messageId || out.messageIds) {
         res.json({ success: true, msg: "Career form submitted with resume ✅" });
+ console.log("resume uploaded success");
       } else {
         res.status(500).json({ success: false, error: "Brevo failed", out });
+ console.log("resume uploaded failed");
       }
     } catch (err) {
       console.error("❌ Career mail error:", err.message);
