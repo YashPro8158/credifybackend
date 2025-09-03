@@ -153,7 +153,7 @@ const { fullName, email, phone, role, experience, message,} = req.body;
           : ""
       }
     `,
-    "attachments": [
+    "attachment": [
       {
      content: req.file.buffer.toString("base64"), // ✅ buffer → base64
      name: req.file.originalname, // ✅ filename
