@@ -86,12 +86,10 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
   fileFilter: (req, file, cb) => {
     const allowed = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/pdf"
     ];
     if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("Only PDF/DOC/DOCX allowed"));
+    else cb(new Error("Only PDF allowed"));
   },
 });
 // Career form
@@ -147,6 +145,7 @@ app.post(
       {
      content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
      name: req.file.originalname, // ✅ filename
+            contentType: req.file.mimetype
       },
     ],
   }),
