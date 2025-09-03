@@ -89,9 +89,14 @@ const upload = multer({
     const allowed = [
       "application/pdf",
       "application/octet-stream", 
-      "application/x-pdf"
+      "application/x-pdf",
+  "application/force-download",
+  "application/download"
     ];
-    if (allowed.includes(file.mimetype)) cb(null, true);
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+      console.log("Uploaded mimetype:", file.mimetype);
+    }
     else cb(new Error("Only PDF allowed"));
   },
 });
@@ -148,6 +153,7 @@ app.post(
     attachments: [
       {
      content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
+        console.log("Base64 length:", base64Content.length);
      name: escapeHtml(req.file.originalname), // ✅ filename
       contentType: req.file.mimetype
       },
@@ -156,7 +162,7 @@ app.post(
 });
       
 const brevoData = await brevoRes.json();
-console.log("Brevo response:", brevoData);
+console.log("📨 Brevo response:", JSON.stringify(brevoData, null, 2));
       // ✅ Success response after mail is sent
       res.json({ success: true, msg: "Career form submitted with resume ✅" });
     } catch (err) {
