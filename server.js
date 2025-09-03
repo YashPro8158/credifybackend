@@ -91,7 +91,7 @@ const upload = multer({
       "application/octet-stream", 
       "application/x-pdf"
     ];
-    if (allowed.includes(file.mimetype)) cb(null, true) console.log("Uploaded file mimetype:", file.mimetype);;
+    if (allowed.includes(file.mimetype)) cb(null, true);
     else cb(new Error("Only PDF allowed"));
   },
 });
