@@ -119,7 +119,7 @@ app.post(
     const { fullName, email, phone, role, experience, message,} = req.body;
 
     try {
-     await fetch("https://api.brevo.com/v3/smtp/email", {
+     const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
   method: "POST",
   headers: {
     "accept": "application/json",
@@ -152,7 +152,9 @@ app.post(
     ],
   }),
 });
-
+      
+const brevoData = await brevoRes.json();
+console.log("Brevo response:", brevoData);
       // ✅ Success response after mail is sent
       res.json({ success: true, msg: "Career form submitted with resume ✅" });
     } catch (err) {
