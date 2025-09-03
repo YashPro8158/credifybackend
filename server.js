@@ -88,8 +88,10 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowed = [
       "application/pdf",
+      "application/octet-stream", 
+      "application/x-pdf"
     ];
-    if (allowed.includes(file.mimetype)) cb(null, true);
+    if (allowed.includes(file.mimetype)) cb(null, true) console.log("Uploaded file mimetype:", file.mimetype);;
     else cb(new Error("Only PDF allowed"));
   },
 });
@@ -111,8 +113,8 @@ app.post(
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    if (!req.file) {
       console.log("Received file:", req.file);
+    if (!req.file) {
       return res.status(400).json({ success: false, error: "Resume required" });
     }
 
@@ -146,7 +148,7 @@ app.post(
     attachments: [
       {
      content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
-     name: req.file.originalname, // ✅ filename
+     name: escapeHtml(req.file.originalname), // ✅ filename
       contentType: req.file.mimetype
       },
     ],
