@@ -122,8 +122,11 @@ app.post(
     if (!req.file) {
       return res.status(400).json({ success: false, error: "Resume required" });
     }
-
-    const { fullName, email, phone, role, experience, message,} = req.body;
+// ✅ Log file details for debugging
+console.log("📄 File received:", req.file.originalname);
+console.log("🧾 File mimetype:", req.file.mimetype);
+console.log("📦 File size (bytes):", req.file.size);
+const { fullName, email, phone, role, experience, message,} = req.body;
 
     try {
      const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -150,13 +153,12 @@ app.post(
           : ""
       }
     `,
-    attachments: [
+    "attachments": [
       {
-     content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
-        console.log("Base64 length:", base64Content.length);
-     name: escapeHtml(req.file.originalname), // ✅ filename
-      contentType: req.file.mimetype
-      },
+     content: req.file.buffer.toString("base64"), // ✅ buffer → base64
+     name: req.file.originalname, // ✅ filename
+      }
+      ,
     ],
   }),
 });
