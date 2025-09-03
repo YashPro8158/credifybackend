@@ -88,15 +88,8 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowed = [
       "application/pdf",
-      "application/octet-stream", 
-      "application/x-pdf",
-  "application/force-download",
-  "application/download"
     ];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-      console.log("Uploaded mimetype:", file.mimetype);
-    }
+    if (allowed.includes(file.mimetype)) cb(null, true);
     else cb(new Error("Only PDF allowed"));
   },
 });
@@ -118,18 +111,15 @@ app.post(
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-      console.log("Received file:", req.file);
     if (!req.file) {
+      console.log("Received file:", req.file);
       return res.status(400).json({ success: false, error: "Resume required" });
     }
-// ✅ Log file details for debugging
-console.log("📄 File received:", req.file.originalname);
-console.log("🧾 File mimetype:", req.file.mimetype);
-console.log("📦 File size (bytes):", req.file.size);
-const { fullName, email, phone, role, experience, message,} = req.body;
+
+    const { fullName, email, phone, role, experience, message,} = req.body;
 
     try {
-     const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+     await fetch("https://api.brevo.com/v3/smtp/email", {
   method: "POST",
   headers: {
     "accept": "application/json",
@@ -153,18 +143,16 @@ const { fullName, email, phone, role, experience, message,} = req.body;
           : ""
       }
     `,
-    "attachment": [
+    attachment: [
       {
-     content: req.file.buffer.toString("base64"), // ✅ buffer → base64
+     content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
      name: req.file.originalname, // ✅ filename
-      }
-      ,
+      contentType: req.file.mimetype
+      },
     ],
   }),
 });
-      
-const brevoData = await brevoRes.json();
-console.log("📨 Brevo response:", JSON.stringify(brevoData, null, 2));
+
       // ✅ Success response after mail is sent
       res.json({ success: true, msg: "Career form submitted with resume ✅" });
     } catch (err) {
@@ -248,3 +236,4 @@ function escapeHtml(str = "") {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+"
