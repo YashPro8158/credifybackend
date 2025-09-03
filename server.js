@@ -29,6 +29,7 @@ app.use(
 );
 app.use(cors({ origin: "*" }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // ---- Rate Limit ----
@@ -86,7 +87,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
   fileFilter: (req, file, cb) => {
     const allowed = [
-      "application/pdf"
+      "application/pdf",
     ];
     if (allowed.includes(file.mimetype)) cb(null, true);
     else cb(new Error("Only PDF allowed"));
@@ -111,10 +112,11 @@ app.post(
     }
 
     if (!req.file) {
+      console.log("Received file:", req.file);
       return res.status(400).json({ success: false, error: "Resume required" });
     }
 
-    const { fullName, email, phone, role, experience, message } = req.body;
+    const { fullName, email, phone, role, experience, message,} = req.body;
 
     try {
      await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -145,7 +147,7 @@ app.post(
       {
      content: req.file.buffer.toString("base64").replace(/(\r\n|\n|\r)/gm, ""), // ✅ buffer → base64
      name: req.file.originalname, // ✅ filename
-            contentType: req.file.mimetype
+      contentType: req.file.mimetype
       },
     ],
   }),
