@@ -17,6 +17,83 @@ const app = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000;
 
+
+// OTP storage (in-memory, for demo)
+let otpStore = {}; // { email_or_phone: { otp, expires } }
+const transporter = nodemailer.createTransport({
+  host: "smtp.hostinger.com",
+  port: 465,           // TLS ke liye
+  secure: true,       // TLS false, SSL true hoga agar 465 port use karo
+  auth: {
+    user: process.env.EMAIL_USER_OTP, // info@credifypyt.online
+    pass: process.env.EMAIL_PASS_OTP  // uska password
+  },
+});
+
+// Generate OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
+}
+
+// ---- Send OTP route ----
+app.post("/api/send-otp", async (req, res) => {
+  const { email, phone } = req.body;
+  if (!email || !phone) return res.status(400).json({ success: false, error: "Email & Phone required" });
+
+  const otp = generateOTP();
+  const expires = Date.now() + 60 * 1000; // 1 min expiry
+
+  // Save OTP for both email and phone
+  otpStore[email] = { otp, expires };
+  otpStore[phone] = { otp, expires };
+
+  try {
+    // Send OTP via email
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Your OTP for Credify Form",
+      html: `<p>Your OTP is <b>${otp}</b>. It is valid for 1 minute.</p>`
+    });
+
+    // **Phone OTP sending placeholder**
+    // SMS gateway use karo jaise Twilio / MSG91
+    console.log(`OTP sent to phone ${phone}: ${otp}`);
+
+    res.json({ success: true, msg: "OTP sent to email & phone" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to send OTP" });
+  }
+});
+
+// ---- Verify OTP route ----
+app.post("/api/verify-otp", (req, res) => {
+  const { email, phone, otp } = req.body;
+  if (!email || !phone || !otp) return res.status(400).json({ success: false, error: "All fields required" });
+
+  const storedOtpEmail = otpStore[email];
+  const storedOtpPhone = otpStore[phone];
+
+  const now = Date.now();
+
+  if (
+    storedOtpEmail && storedOtpPhone &&
+    storedOtpEmail.otp == otp &&
+    storedOtpPhone.otp == otp &&
+    storedOtpEmail.expires > now
+  ) {
+    // OTP correct & not expired → remove OTP from store
+    delete otpStore[email];
+    delete otpStore[phone];
+    res.json({ success: true, msg: "OTP verified" });
+  } else {
+    res.status(400).json({ success: false, error: "Invalid or expired OTP" });
+  }
+});
+
+
+
 // ---- Serve static frontend ----
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -47,6 +124,9 @@ app.post(
     body("message").isLength({ min: 5 }),
   ],
   async (req, res) => {
+    //OTP SENDING PROCESS START
+    
+    //OTP SENDING PROCESS START
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
