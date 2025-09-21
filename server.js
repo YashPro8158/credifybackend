@@ -47,6 +47,24 @@ app.post(
     body("message").isLength({ min: 5 }),
   ],
   async (req, res) => {
+    // reCAPTCHA verification
+const token = req.body['g-recaptcha-response'];
+if (!token) {
+  return res.status(400).json({ success: false, error: 'Captcha required' });
+}
+
+const secretKey = process.env.RECAPTCHA_SECRET_KEY; // .env me save kar
+
+const captchaResponse = await fetch(
+  `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`,
+  { method: 'POST' }
+);
+const captchaData = await captchaResponse.json();
+
+if (!captchaData.success) {
+  return res.status(400).json({ success: false, error: 'Captcha verification failed' });
+}
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
@@ -106,6 +124,24 @@ app.post(
     body("message").optional().trim(),
   ],
   async (req, res) => {
+    // reCAPTCHA verification
+const token = req.body['g-recaptcha-response'];
+if (!token) {
+  return res.status(400).json({ success: false, error: 'Captcha required' });
+}
+
+const secretKey = process.env.RECAPTCHA_SECRET_KEY; // .env me save kar
+
+const captchaResponse = await fetch(
+  `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`,
+  { method: 'POST' }
+);
+const captchaData = await captchaResponse.json();
+
+if (!captchaData.success) {
+  return res.status(400).json({ success: false, error: 'Captcha verification failed' });
+}
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
@@ -167,6 +203,24 @@ app.post(
 
 // ---- Loan Application API ----
 app.post("/api/apply", async (req, res) => {
+  // reCAPTCHA verification
+const token = req.body['g-recaptcha-response'];
+if (!token) {
+  return res.status(400).json({ success: false, error: 'Captcha required' });
+}
+
+const secretKey = process.env.RECAPTCHA_SECRET_KEY; // .env me save kar
+
+const captchaResponse = await fetch(
+  `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`,
+  { method: 'POST' }
+);
+const captchaData = await captchaResponse.json();
+
+if (!captchaData.success) {
+  return res.status(400).json({ success: false, error: 'Captcha verification failed' });
+}
+
   const {
     referenceId,
     loanType,
